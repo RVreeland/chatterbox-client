@@ -6,13 +6,14 @@ body {
 }
 
 #main {
-    width: 500px;
+    width: 700px;
     margin: auto;
     text-align: left;
     background: white;
     padding: 50px 60px;
     border: solid #ddd;
     border-width: 0 1px 1px 1px;
+    display: inline-block;
 }
 
 #main h1 {
@@ -27,7 +28,8 @@ body {
 }
 
 #main ul {
-    padding-left: 20px;
+    padding-left: 0px;
+    line-height: 1.5;
 }
 
 #main .error {
@@ -45,12 +47,12 @@ body {
     color: green;
     line-height: 13px;
 }
-
+/*
 form {
     padding: 20px;
     padding-left: 0;
     margin-bottom: 20px;
-}
+}*/
 
 form input[type=text] {
     margin-right: 10px;
@@ -94,4 +96,22 @@ form input[type=text] {
 
 .friend-message {
     font-weight: bold;
+}
+
+.rooms {
+    display: inline-block;
+    list-style: none;
+    text-align: left;
+    width: 150px;
+}
+
+.sidebar {
+    display: inline-block;
+    width: 30%;
+    float: left;
+}
+
+.messages-bar {
+    float: right;
+    width: 70%;
 }
