@@ -2,16 +2,21 @@ var app = {};
 $(document).ready(function() {
 // YOUR CODE HERE:
   app.server = "https://api.parse.com/1/classes/chatterbox";
-  app.initialLoad = new Date(Date.now() - 60 * 1000).toISOString();
+  app.initialLoad = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   app.messages = [];
   app.rooms = [];
   app.username = '';
   app.currentRoom = '';
-  app.friends = [];
+  app.friends = {};
 
   app.init = function() {
 
     app.fetch();
+  };
+
+  app.redisplay = function () {
+    $('.messages').html('');
+    app.displayMessages(app.messages);
   };
 
   app.send = function(message) {
@@ -43,7 +48,7 @@ $(document).ready(function() {
     _.each(undisplayedMessages, function (message) {
 
       var $user = $('<span class="username"></span>');
-      $user.text(message.username + ' ');
+      $user.text(message.username);
 
       var time = message.date;
       var $timestamp = $('<span class="timestamp"></span>');
@@ -56,9 +61,10 @@ $(document).ready(function() {
       $messageHtml.text(message.text).html();
 
       //add friend-message class to message text div if user is a friend
-      // if (app.friends.indexOf(message.username) !== -1) {
-      //   $messageHtml.addClass('friend-message');
-      // };
+
+      if (app.friends[message.username]) {
+        $messageHtml.addClass('friend-message');
+      }
 
       var $fullMessage = $('<div class="chat"></div>');
       $fullMessage.append($user);
@@ -117,22 +123,22 @@ $(document).ready(function() {
         return room; //filter undefined and empty string
       });
       app.rooms = _.uniq(app.rooms.concat(newRooms));
-      var $rooms = $('.rooms');
-      $rooms.html('');
-      _.each(app.rooms, function (room) {
-        var $room = $('<li></li>');
-        $room.text(room);
-        if (room === app.currentRoom) {
-          $room.addClass('current-room');
-        }
-        $rooms.append($room);
-      });
-
-
-
-
+      app.updateRooms();
     });
     setTimeout(app.fetch, 5000);
+  };
+
+  app.updateRooms = function () {
+    var $rooms = $('.rooms');
+    $rooms.html('');
+    _.each(app.rooms, function (room) {
+      var $room = $('<li></li>');
+      $room.text(room);
+      if (room === app.currentRoom) {
+        $room.addClass('current-room');
+      }
+      $rooms.append($room);
+    });
   };
 
   $('.chat-form').on('submit', function(event) {
@@ -182,34 +188,31 @@ $(document).ready(function() {
     }
     app.currentRoom = $(this).text();
     $(this).addClass('current-room');
-    $('.messages').html('');
-    app.displayMessages(app.messages);
+    app.redisplay();
   });
 
   $('.new-room-form').on('submit', function (event) {
     event.preventDefault();
     app.currentRoom = $('.new-room-name').val();
     $('.new-room-name').val('');
-    //doesn't append new room to rooms list until message is submitted.
-    $('.messages').html('');
-    app.displayMessages(app.messages);
+    app.rooms.push(app.currentRoom);
+    app.updateRooms();
+    app.redisplay();
   });
-//not working
-  $('.chat').on('click', '.username', function (event) {
-    event.preventDefault;
-    console.log('clicked username ' +  this);
-    var friend = $('.username').text();
-    app.friends.push(friend);
+
+  $('.messages').on('click', '.username', function (event) {
+    event.preventDefault();
+    var friend = $(this).text();
+    app.friends[friend] = !app.friends[friend];
+    app.redisplay();
   });
 
   $('.home').on('click', function (event) {
     if (app.currentRoom) {
       $('.current-room').removeClass('current-room');
     }
-    app.currentroom = '';
-    console.log('clicked home')
-    $('.messages').html('');
-    app.displayMessages(app.messages);
+    app.currentRoom = '';
+    app.redisplay();
   });
 
   app.init();
