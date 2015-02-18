@@ -82,3 +82,15 @@ form input[type=text] {
 .spinner img {
     padding: 10px;
 }
+
+.login-container {
+    float: right;
+}
+
+.current-room {
+    font-weight: bold;
+}
+
+.friend-message {
+    font-weight: bold;
+}

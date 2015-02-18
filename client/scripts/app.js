@@ -1,80 +1,216 @@
+var app = {};
+$(document).ready(function() {
 // YOUR CODE HERE:
-var url = "https://api.parse.com/1/classes/chatterbox";
-var messages = [];
+  app.server = "https://api.parse.com/1/classes/chatterbox";
+  app.initialLoad = new Date(Date.now() - 60 * 1000).toISOString();
+  app.messages = [];
+  app.rooms = [];
+  app.username = '';
+  app.currentRoom = '';
+  app.friends = [];
+
+  app.init = function() {
+
+    app.fetch();
+  };
+
+  app.send = function(message) {
+    $.ajax({
+      url: app.server,
+      type: 'POST',
+      data: JSON.stringify(message),
+      contentType: 'application/json',
+      success: function (data) {
+        console.log('chatterbox: Message sent');
+      },
+      error: function (data) {
+        console.error('chatterbox: Failed to send message');
+      }
+    });
+
+  };
+
+  //Display Code
+  app.displayMessages = function (undisplayedMessages) {
+    var messageContainer = $('.messages');
+
+    if (app.currentRoom) {
+      undisplayedMessages = _.filter(undisplayedMessages, function(message) {
+        return message.roomname === app.currentRoom;
+      });
+    }
+
+    _.each(undisplayedMessages, function (message) {
+
+      var $user = $('<span class="username"></span>');
+      $user.text(message.username + ' ');
+
+      var time = message.date;
+      var $timestamp = $('<span class="timestamp"></span>');
+      $timestamp.text(time.toLocaleDateString() + ' ' + time.toLocaleTimeString());
+
+      // var $id = $('<span></span>');
+      // $id.text(message.objectId);
+
+      var $messageHtml = $('<div class="message-text"></div>');
+      $messageHtml.text(message.text).html();
+
+      //add friend-message class to message text div if user is a friend
+      // if (app.friends.indexOf(message.username) !== -1) {
+      //   $messageHtml.addClass('friend-message');
+      // };
+
+      var $fullMessage = $('<div class="chat"></div>');
+      $fullMessage.append($user);
+      $fullMessage.append($timestamp);
+      // $fullMessage.append($id);
+      $fullMessage.append($messageHtml);
+      messageContainer.prepend($fullMessage);
+    });
+  };
 
 
-//Display Code
-var displayMessages = function (undisplayedMessages) {
-  var messageContainer = $('.messages');
-  _.each(undisplayedMessages, function (message) {
-    var $user = $('<span class="username"></span>');
-    $user.text(message.username + ' ');
-    var time = message.date;
-    var $timestamp = $('<span class="timestamp"></span>');
-    $timestamp.text(time.toLocaleDateString() + ' ' + time.toLocaleTimeString());
-    var $messageHtml = $('<div class="message-text"></div>');
-    $messageHtml.text(message.text);
-    var $fullMessage = $('<div class="chat"></div>');
-    $fullMessage.append($user);
-    $fullMessage.append($timestamp);
-    $fullMessage.append($messageHtml);
-    messageContainer.prepend($fullMessage);
-  });
-};
+  // Get our data
+  // Expect response to be:
+  //  { results:
+  //      [ { keys are: createdAt, objectId, roomname, text, updatedAt, username}, ...]
+  //  }
+  //  restrict with url + '?' + $.param({where: {createdAt: {__type: 'Date', iso: message.createdAt}}, ... }})
 
-
-// Get our data
-// Expect response to be:
-//  { results:
-//      [ { keys are: createdAt, objectId, roomname, text, updatedAt, username}, ...]
-//  }
-//  restrict with url + '?' + $.param({where: {createdAt: {__type: 'Date', iso: message.createdAt}}, ... }})
-
-var getMessages = function() {
-  var requestURL = url;
-  var getMessagesFrom = messages.length > 0
-                          ? messages[0].createdAt
-                          : new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-  requestURL = requestURL + '?' + $.param({
-    where: {
-      createdAt: {
-        $gt: {
-          __type: 'Date',
-          iso: getMessagesFrom
+  app.fetch = function() {
+    var fetchFrom = app.messages.length > 0
+                            ? app.messages[app.messages.length - 1].createdAt
+                            : app.initialLoad;
+    var params =  $.param({
+      where: {
+        createdAt: {
+          $gt: {
+            __type: 'Date',
+            iso: fetchFrom
+          }
         }
       }
+    });
+
+    $.get(app.server, params, function (response) {
+      // console.log(response);
+      var results = _.filter(response.results, function(message) {
+        return message.text !== undefined && message.username !== undefined;
+      });
+      _.each(results, function (message) {
+        message.date = new Date(message.createdAt);
+      });
+      results.sort(function (a, b) {
+        if (a.date < b.date) {
+          return -1;
+        } else if (a.date > b.date) {
+          return 1;
+        } else {
+          return 0;
+        }
+      });
+      app.messages = app.messages.concat(results);
+      app.displayMessages(results);
+
+      var newRooms = _.pluck(results, 'roomname');
+      newRooms = _.filter(newRooms, function (room) {
+        return room; //filter undefined and empty string
+      });
+      app.rooms = _.uniq(app.rooms.concat(newRooms));
+      var $rooms = $('.rooms');
+      $rooms.html('');
+      _.each(app.rooms, function (room) {
+        var $room = $('<li></li>');
+        $room.text(room);
+        if (room === app.currentRoom) {
+          $room.addClass('current-room');
+        }
+        $rooms.append($room);
+      });
+
+
+
+
+    });
+    setTimeout(app.fetch, 5000);
+  };
+
+  $('.chat-form').on('submit', function(event) {
+    event.preventDefault();
+    var $inputText = $('.new-message-text');
+    var message = {
+      text: $inputText.val(),
+      username: app.username,
+      roomname: app.currentRoom || undefined
+    };
+    $inputText.val('');
+    app.send(message);
+  });
+
+
+  $('.username-link').on('click', function (event) {
+    event.preventDefault();
+
+    $usernameLink = $(this);
+    $usernameLink.hide();
+
+    var $container = $('.login-container');
+    var $usernameForm = $(
+      '<form>' +
+      '<input type="text" class="username-input" placeholder="Enter user name"/>' +
+      '<button type="submit">Log in</button>' +
+      '</form>'
+      );
+
+    $container.append($usernameForm);
+
+    $usernameForm.on('submit', function (event) {
+      event.preventDefault();
+      app.username = $('.username-input').val()
+      $(this).remove();
+      $usernameLink.text(app.username);
+      $usernameLink.show();
+    });
+  });
+
+  var $rooms = $('.rooms');
+  $rooms.on('click', 'li', function(event) {
+    event.preventDefault();
+    if (app.currentRoom) {
+      //remove class from current room
+      $('.current-room').removeClass('current-room');
     }
+    app.currentRoom = $(this).text();
+    $(this).addClass('current-room');
+    $('.messages').html('');
+    app.displayMessages(app.messages);
   });
-  $.get(requestURL, function (response) {
-    // console.log(response);
-    var results = _.filter(response.results, function(message) {
-      return message.text !== undefined && message.username !== undefined;
-    });
-    _.each(results, function (message) {
-      message.date = new Date(message.createdAt);
-    });
-    results.sort(function (a, b) {
-      if (a.date < b.date) {
-        return -1;
-      } else if (a.date > b.date) {
-        return 1;
-      } else {
-        return 0;
-      }
-    });
-    messages = results.concat(messages);
-    displayMessages(results);
+
+  $('.new-room-form').on('submit', function (event) {
+    event.preventDefault();
+    app.currentRoom = $('.new-room-name').val();
+    $('.new-room-name').val('');
+    //doesn't append new room to rooms list until message is submitted.
+    $('.messages').html('');
+    app.displayMessages(app.messages);
   });
-  // setTimeout(getMessages, 5000);
-};
+//not working
+  $('.chat').on('click', '.username', function (event) {
+    event.preventDefault;
+    console.log('clicked username ' +  this);
+    var friend = $('.username').text();
+    app.friends.push(friend);
+  });
 
-getMessages();
+  $('.home').on('click', function (event) {
+    if (app.currentRoom) {
+      $('.current-room').removeClass('current-room');
+    }
+    app.currentroom = '';
+    console.log('clicked home')
+    $('.messages').html('');
+    app.displayMessages(app.messages);
+  });
 
-
-
-
-
-
-
-
-
+  app.init();
+});

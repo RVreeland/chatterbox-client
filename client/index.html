@@ -13,9 +13,20 @@
     <script src="scripts/app.js"></script>
   </head>
   <body>
+    <form class="new-room-form">
+      <input type="text" class="new-room-name" placeholder="Name your room">
+      <button type="submit">Create Room</button>
+    </form>
+    <ul class="rooms"></ul>
     <div id="main">
-      <h1>chatterbox</h1>
-      <input type="text">
+      <span class="login-container">
+        <a href="" class="username-link">Login</a>
+      </span>
+      <h1 class="home">chatterbox</h1>
+      <form class="chat chat-form">
+        <input type="text" class="new-message-text" placeholder="Say something">
+        <button type= "submit" >Submit</button>
+      </form>
       <div class="messages"></div>
     </div>
   </body>
